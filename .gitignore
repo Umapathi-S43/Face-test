@@ -1,0 +1,72 @@
+# Virtual environments
+venv/
+.venv/
+env/
+.env/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Models (large files)
+*.onnx
+*.pth
+*.pt
+*.pkl
+*.h5
+*.bin
+models/*.onnx
+models/*.pth
+app/models/*.onnx
+app/models/*.pth
+Deep-Live-Cam/models/*.onnx
+Deep-Live-Cam/models/*.pth
+
+# Uploads and outputs
+uploads/
+outputs/
+app/uploads/
+app/outputs/
+*.mp4
+*.avi
+*.mov
+*.mkv
+
+# OS files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# IDE
+.idea/
+.vscode/
+*.sublime-*
+
+# Logs
+*.log
+logs/
+
+# Temp files
+tmp/
+temp/
+*.tmp
+
+# Deep-Live-Cam (cloned repo - has its own git)
+Deep-Live-Cam/
+
+# Facefusion (reference repo)
+facefusion/
+
+# Python
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Coverage
+.coverage
+htmlcov/
