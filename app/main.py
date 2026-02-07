@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
-🎭 Real-Time Face Swap Application
-Complete Face Swap System with Web UI
+💉 SurgeryPreview - Plastic Surgery Visualization Tool
+Complete Surgery Preview System with Web UI
 Optimized for MacBook Pro M1 Pro
 Features:
-- Real-time webcam face swap
-- Virtual camera output for Teams/Zoom/Meet
-- Mouth mask for lip sync
+- Real-time webcam surgery preview
+- Virtual camera output for video consultations
+- Mouth mask for natural lip movement
 - Color transfer for lighting matching
 - High-quality face enhancement
 """
@@ -533,304 +533,127 @@ def detect_faces_preview(image: str) -> Tuple[str, str]:
 
 
 def create_ui():
-    """Create the Gradio web interface"""
+    """Create the Gradio web interface - Minimal UI"""
     
     with gr.Blocks(
-        title="🎭 Real-Time Face Swap",
+        title="💉 SurgeryPreview",
         theme=gr.themes.Soft(),
         css="""
-        .gradio-container { max-width: 1200px !important; }
-        .main-header { text-align: center; margin-bottom: 20px; }
+        .gradio-container { 
+            max-width: 900px !important; 
+            margin: auto;
+        }
+        .main-header { 
+            text-align: center; 
+            margin-bottom: 30px; 
+        }
         """
     ) as app:
         
         gr.Markdown("""
-        # 🎭 Real-Time Face Swap Application
+        <div class="main-header">
         
-        **Optimized for MacBook Pro M1 Pro** | Powered by InsightFace + GFPGAN
+        # 💉 SurgeryPreview
+        ### Plastic Surgery Visualization Tool
         
-        ---
+        Upload expected result photos and preview them live on webcam
+        
+        </div>
         """)
         
-        with gr.Tabs():
-            # ============ IMAGE SWAP TAB ============
-            with gr.TabItem("📷 Image Face Swap"):
-                gr.Markdown("### Swap faces between images")
-                
-                with gr.Row():
-                    with gr.Column(scale=1):
-                        source_images = gr.File(
-                            label="📸 Source Face Images (Person A) - Upload 1-10 images",
-                            file_count="multiple",
-                            file_types=["image"],
-                            type="filepath"
-                        )
-                        gr.Markdown("*Upload multiple photos of the same person for better quality*")
-                        
-                    with gr.Column(scale=1):
-                        target_image = gr.Image(
-                            label="🎯 Target Image (Person B)",
-                            type="filepath"
-                        )
-                
-                with gr.Row():
-                    enhance_check = gr.Checkbox(
-                        label="✨ Enhance Face (GFPGAN)",
-                        value=True
-                    )
-                    swap_all_check = gr.Checkbox(
-                        label="👥 Swap All Faces",
-                        value=False
-                    )
-                
-                swap_btn = gr.Button("🔄 Swap Faces", variant="primary", size="lg")
-                
-                with gr.Row():
-                    output_image = gr.Image(label="📤 Result")
-                    status_text = gr.Textbox(label="Status", interactive=False)
-                
-                swap_btn.click(
-                    fn=process_face_swap,
-                    inputs=[source_images, target_image, enhance_check, swap_all_check],
-                    outputs=[output_image, status_text]
-                )
-            
-            # ============ VIDEO SWAP TAB ============
-            with gr.TabItem("🎬 Video Face Swap"):
-                gr.Markdown("### Swap faces in a video")
-                
-                with gr.Row():
-                    with gr.Column(scale=1):
-                        video_source_images = gr.File(
-                            label="📸 Source Face Images (Person A)",
-                            file_count="multiple",
-                            file_types=["image"],
-                            type="filepath"
-                        )
-                        
-                    with gr.Column(scale=1):
-                        target_video = gr.Video(
-                            label="🎯 Target Video (Person B)"
-                        )
-                
-                with gr.Row():
-                    video_enhance_check = gr.Checkbox(
-                        label="✨ Enhance Face (slower)",
-                        value=False
-                    )
-                    video_swap_all_check = gr.Checkbox(
-                        label="👥 Swap All Faces",
-                        value=False
-                    )
-                
-                video_swap_btn = gr.Button("🔄 Process Video", variant="primary", size="lg")
-                
-                with gr.Row():
-                    output_video = gr.Video(label="📤 Result Video")
-                    video_status = gr.Textbox(label="Status", interactive=False)
-                
-                video_swap_btn.click(
-                    fn=process_video_swap,
-                    inputs=[video_source_images, target_video, video_enhance_check, video_swap_all_check],
-                    outputs=[output_video, video_status]
-                )
-            
-            # ============ WEBCAM TAB ============
-            with gr.TabItem("📹 Live Webcam"):
-                gr.Markdown("""
-                ### Real-Time Webcam Face Swap
-                
-                **Enhanced with Deep-Live-Cam style quality features:**
-                - 🎯 **Mouth Mask** - Preserves lip movement for realistic results
-                - 🎨 **Color Transfer** - Matches lighting between faces
-                - ✨ **Sharpening** - Crisp, high-quality output
-                
-                **Instructions:**
-                1. Upload source face images (person you want to look like)
-                2. Adjust quality settings as needed
-                3. Click "▶️ Start Face Swap"
-                """)
-                
-                with gr.Row():
-                    webcam_source_images = gr.File(
-                        label="📸 Source Face Images (Person you want to look like)",
-                        file_count="multiple",
-                        file_types=["image"],
-                        type="filepath"
-                    )
-                
-                with gr.Row():
-                    camera_dropdown = gr.Dropdown(
-                        label="📷 Camera",
-                        choices=["0 - Default Camera", "1 - Camera 1", "2 - Camera 2"],
-                        value="0 - Default Camera"
-                    )
-                
-                gr.Markdown("### 🎛️ Quality Settings")
-                
-                with gr.Row():
-                    mouth_mask_check = gr.Checkbox(
-                        label="👄 Mouth Mask (Lip Sync)",
-                        value=True,
-                        info="Preserves original mouth movement for realistic lip sync"
-                    )
-                    webcam_enhance = gr.Checkbox(
-                        label="✨ GFPGAN Enhance",
-                        value=False,
-                        info="Higher quality but reduces FPS significantly"
-                    )
-                
-                with gr.Row():
-                    sharpness_slider = gr.Slider(
-                        label="🔍 Sharpness",
-                        minimum=0.0,
-                        maximum=1.0,
-                        value=0.3,
-                        step=0.1,
-                        info="Higher = sharper face (0 = off)"
-                    )
-                
-                with gr.Row():
-                    start_webcam_btn = gr.Button("▶️ Start Face Swap", variant="primary", size="lg")
-                    stop_webcam_btn = gr.Button("⏹️ Stop", variant="stop", size="lg")
-                
-                webcam_status = gr.Textbox(label="Status", interactive=False)
-                webcam_preview = gr.Image(label="📺 Live Face Swap Preview", height=480)
-                
-                # Use generator for streaming with quality options
-                start_webcam_btn.click(
-                    fn=webcam_face_swap_stream,
-                    inputs=[webcam_source_images, camera_dropdown, webcam_enhance, mouth_mask_check, sharpness_slider],
-                    outputs=[webcam_preview, webcam_status]
-                )
-                
-                stop_webcam_btn.click(
-                    fn=stop_webcam_stream,
-                    outputs=[webcam_status]
-                )
-            
-            # ============ VIRTUAL CAMERA TAB (for Teams/Zoom/Meet) ============
-            with gr.TabItem("🎥 Virtual Camera (Zoom/Teams/Meet)"):
-                vc_available = "✅ Native virtual camera available!" if VIRTUAL_CAM_AVAILABLE else "⚠️ Using OBS method (pyvirtualcam not installed)"
-                
-                gr.Markdown(f"""
-                ### 🎥 Virtual Camera for Video Calls
-                
-                **Status:** {vc_available}
-                
-                **Use face swap in video conferencing apps:**
-                - 💼 Microsoft Teams
-                - 🎦 Zoom
-                - 📹 Google Meet
-                - 🎬 OBS Studio
-                - 📱 Discord
-                
-                **Method 1 - Native Virtual Camera (if available):**
-                1. Click "Start Virtual Camera"
-                2. In Teams/Zoom/Meet, select the virtual camera device
-                
-                **Method 2 - OBS Virtual Camera:**
-                1. Install [OBS Studio](https://obsproject.com/)
-                2. Add "Window Capture" source → select this preview window
-                3. Start "Virtual Camera" in OBS
-                4. In Teams/Zoom/Meet, select "OBS Virtual Camera"
-                """)
-                
-                with gr.Row():
-                    vc_source_images = gr.File(
-                        label="📸 Source Face Images",
-                        file_count="multiple",
-                        file_types=["image"],
-                        type="filepath"
-                    )
-                
-                with gr.Row():
-                    vc_camera_dropdown = gr.Dropdown(
-                        label="📷 Input Camera",
-                        choices=["0 - Default Camera", "1 - Camera 1", "2 - Camera 2"],
-                        value="0 - Default Camera"
-                    )
-                
-                gr.Markdown("### 🎛️ Quality Settings")
-                
-                with gr.Row():
-                    vc_mouth_mask = gr.Checkbox(label="👄 Lip Sync (Mouth Mask)", value=True)
-                    vc_enhance = gr.Checkbox(label="✨ Face Enhance", value=False)
-                
-                with gr.Row():
-                    vc_sharpness = gr.Slider(label="🔍 Sharpness", minimum=0.0, maximum=1.0, value=0.3, step=0.1)
-                
-                gr.Markdown("### 🎬 Virtual Camera Controls")
-                
-                with gr.Row():
-                    vc_native_btn = gr.Button("🎥 Start Native Virtual Camera", variant="primary", size="lg")
-                    vc_preview_btn = gr.Button("📺 Start Preview Only", variant="secondary", size="lg")
-                    vc_stop_btn = gr.Button("⏹️ Stop", variant="stop", size="lg")
-                
-                vc_status = gr.Textbox(label="Status", interactive=False, value="Ready")
-                
-                gr.Markdown("### 📺 Preview Window (Capture this in OBS if using Method 2)")
-                vc_preview = gr.Image(label="Virtual Camera Preview", height=480)
-                
-                # Native virtual camera (direct output)
-                vc_native_btn.click(
-                    fn=start_virtual_camera,
-                    inputs=[vc_source_images, vc_camera_dropdown, vc_enhance, vc_mouth_mask, vc_sharpness],
-                    outputs=[vc_status]
-                )
-                
-                # Preview only (for OBS capture)
-                vc_preview_btn.click(
-                    fn=webcam_face_swap_stream,
-                    inputs=[vc_source_images, vc_camera_dropdown, vc_enhance, vc_mouth_mask, vc_sharpness],
-                    outputs=[vc_preview, vc_status]
-                )
-                
-                vc_stop_btn.click(
-                    fn=stop_virtual_camera,
-                    outputs=[vc_status]
-                )
-            
-            # ============ FACE DETECTION TAB ============
-            with gr.TabItem("🔍 Face Detection"):
-                gr.Markdown("### Detect and preview faces in an image")
-                
-                detect_input = gr.Image(
-                    label="📷 Upload Image",
-                    type="filepath"
-                )
-                
-                detect_btn = gr.Button("🔍 Detect Faces", variant="primary")
-                
-                with gr.Row():
-                    detect_output = gr.Image(label="📤 Detected Faces")
-                    detect_status = gr.Textbox(label="Status", interactive=False)
-                
-                detect_btn.click(
-                    fn=detect_faces_preview,
-                    inputs=[detect_input],
-                    outputs=[detect_output, detect_status]
-                )
+        # Upload Section
+        with gr.Row():
+            source_images = gr.File(
+                label="🎯 Upload Expected Result Photos (1-10 images)",
+                file_count="multiple",
+                file_types=["image"],
+                type="filepath",
+                scale=2
+            )
         
+        gr.Markdown("---")
+        
+        # Quality Settings (Compact)
+        with gr.Row():
+            mouth_mask_check = gr.Checkbox(
+                label="👄 Natural Lip Movement",
+                value=True
+            )
+            webcam_enhance = gr.Checkbox(
+                label="✨ Enhanced Quality",
+                value=False
+            )
+            sharpness_slider = gr.Slider(
+                label="🔍 Sharpness",
+                minimum=0.0,
+                maximum=1.0,
+                value=0.3,
+                step=0.1
+            )
+        
+        # Start Button
+        with gr.Row():
+            start_webcam_btn = gr.Button(
+                "▶️ Start Live Preview", 
+                variant="primary", 
+                size="lg",
+                scale=2
+            )
+            stop_webcam_btn = gr.Button(
+                "⏹️ Stop", 
+                variant="stop", 
+                size="lg",
+                scale=1
+            )
+        
+        # Status
+        webcam_status = gr.Textbox(
+            label="Status", 
+            interactive=False,
+            value="Upload photos and click 'Start Live Preview'"
+        )
+        
+        # Preview Window
+        webcam_preview = gr.Image(
+            label="📺 Live Preview", 
+            height=600
+        )
+        
+        # Event handlers
+        # Create hidden camera selector with default value
+        camera_selector = gr.Textbox(value="0 - Default Camera", visible=False)
+        
+        start_webcam_btn.click(
+            fn=webcam_face_swap_stream,
+            inputs=[
+                source_images, 
+                camera_selector,
+                webcam_enhance, 
+                mouth_mask_check, 
+                sharpness_slider
+            ],
+            outputs=[webcam_preview, webcam_status]
+        )
+        
+        stop_webcam_btn.click(
+            fn=stop_webcam_stream,
+            outputs=[webcam_status]
+        )
+        
+        # Tips at bottom
         gr.Markdown("""
         ---
-        ### 📋 Tips for Best Results:
-        - Use **5-10 clear photos** of the source face from different angles
-        - Ensure good **lighting** in both source and target images
-        - For webcam: Use good lighting and face the camera directly
-        - **Face Enhancement** improves quality but is slower
-        
-        ### ⚙️ Performance (M1 Pro):
-        - Image swap: ~1-2 seconds
-        - Video: ~15-20 FPS processing
-        - Webcam: ~15-20 FPS real-time
+        **💡 Tips:**
+        - Upload 5-10 clear photos for best results
+        - Ensure good lighting
+        - Face the camera directly
         """)
     
     return app
 
 
 if __name__ == "__main__":
-    print("🎭 Starting Face Swap Application...")
+    print("💉 SurgeryPreview - Starting...")
     print("📁 Upload directory:", UPLOAD_DIR)
     print("📁 Output directory:", OUTPUT_DIR)
     

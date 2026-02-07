@@ -1,6 +1,6 @@
-# 🎭 Face Swap Application
+# 💉 SurgeryPreview - Plastic Surgery Visualization Tool
 
-Real-time face swap application optimized for MacBook Pro M1 Pro.
+Real-time plastic surgery visualization application optimized for MacBook Pro M1 Pro.
 
 ## 🚀 Quick Start
 
@@ -27,7 +27,7 @@ python run.py
 ```
 app/
 ├── main.py              # Main application with Gradio UI
-├── face_swap_engine.py  # Core face swap engine
+├── face_swap_engine.py  # Core visualization engine
 ├── webcam_manager.py    # Webcam and virtual camera handler
 ├── run.py               # Setup and launch script
 ├── start.sh             # Bash startup script
@@ -40,31 +40,31 @@ app/
 
 Models are automatically downloaded on first run:
 
-1. **inswapper_128.onnx** (~300MB) - Face swapping model
+1. **inswapper_128.onnx** (~300MB) - Face visualization model
 2. **GFPGANv1.4.pth** (~350MB) - Face enhancement model
 
 ## 🎯 Features
 
-### Image Face Swap
-- Upload 1-10 source face images
-- Upload target image
+### Image Preview
+- Upload 1-10 expected result images (post-surgery look)
+- Upload patient's current photo
 - Optional face enhancement (GFPGAN)
-- Swap single or all faces
+- Apply to single or all faces
 
-### Video Face Swap
-- Process video files with face swap
+### Video Preview
+- Process video files with surgery visualization
 - Progress tracking
 - MP4 output
 
-### Live Webcam
-- Real-time face swap from webcam
-- Preview window for OBS capture
+### Live Webcam Preview
+- Real-time surgery preview from webcam
+- Preview window for patient consultations
 - Virtual camera output (if available)
 
 ## ⚙️ Configuration
 
 ### For Best Quality
-- Use 5-10 clear photos of source face
+- Use 5-10 clear photos of expected result
 - Include different angles and expressions
 - Good lighting in photos
 
@@ -103,15 +103,20 @@ curl -L -o GFPGANv1.4.pth "https://github.com/TencentARC/GFPGAN/releases/downloa
 - 16GB RAM recommended
 - Webcam for live mode
 
-## 🎥 Using with Zoom/Teams/Meet
+## 🎥 Using with Zoom/Teams/Meet (Remote Consultations)
 
-1. Start the webcam face swap
+1. Start the webcam surgery preview
 2. Open OBS Studio
-3. Add Window Capture → Select "Face Swap Preview"
+3. Add Window Capture → Select "Surgery Preview" window
 4. Click "Start Virtual Camera" in OBS
 5. In Zoom/Teams, select "OBS Virtual Camera" as your camera
 
+## ⚠️ Disclaimer
+
+This tool is for visualization purposes only. Actual surgical results may vary. 
+This is not a medical device and should not be used for medical diagnosis.
+
 ## 📝 License
 
-For educational and personal use only.
-Please respect privacy and obtain consent when using face swap technology.
+For educational, clinical visualization, and personal use only.
+Please obtain consent when using this technology with patients.

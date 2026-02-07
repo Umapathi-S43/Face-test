@@ -1,9 +1,9 @@
 #!/bin/bash
-# Face Swap Application - Start Script
-# Run this script to start the Face Swap application
+# SurgeryPreview - Plastic Surgery Visualization Tool - Start Script
+# Run this script to start the SurgeryPreview application
 
-echo "🎭 Face Swap Application Starter"
-echo "================================"
+echo "💉 SurgeryPreview - Plastic Surgery Visualization Tool"
+echo "======================================================="
 
 # Navigate to the app directory
 cd "$(dirname "$0")"

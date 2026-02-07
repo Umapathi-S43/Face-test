@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Face Swap Application - Quick Start Script
-Downloads models and starts the application
+SurgeryPreview - Plastic Surgery Visualization Tool
+Quick Start Script - Downloads models and starts the application
 """
 
 import os
@@ -104,7 +104,7 @@ def setup_environment():
 def main():
     """Main entry point"""
     print("=" * 60)
-    print("🎭 Face Swap Application - Setup & Launch")
+    print("💉 SurgeryPreview - Plastic Surgery Visualization Tool")
     print("=" * 60)
     
     # Setup
@@ -123,7 +123,7 @@ def main():
         sys.exit(1)
     
     print("\n" + "=" * 60)
-    print("🚀 Starting Face Swap Application...")
+    print("🚀 Starting SurgeryPreview Application...")
     print("=" * 60)
     print("\n📍 Open your browser at: http://localhost:7860")
     print("   Press Ctrl+C to stop\n")

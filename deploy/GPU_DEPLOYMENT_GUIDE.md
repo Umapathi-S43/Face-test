@@ -1,6 +1,6 @@
 # ===========================================
 
-# 🚀 QUICK GPU DEPLOYMENT GUIDE
+# 🚀 QUICK GPU DEPLOYMENT GUIDE - SurgeryPreview
 
 # ===========================================
 
@@ -27,8 +27,8 @@
 
 # Run setup script
 cd /workspace
-git clone https://github.com/hacksider/Deep-Live-Cam.git
-cd Deep-Live-Cam
+git clone https://github.com/Umapathi-S43/Face-test.git
+cd Face-test
 
 # Create venv
 python -m venv venv
@@ -82,8 +82,8 @@ Access via the public Gradio link or: `http://your-pod-ip:7860`
 
 ```python
 # Cell 1: Setup
-!git clone https://github.com/hacksider/Deep-Live-Cam.git
-%cd Deep-Live-Cam
+!git clone https://github.com/Umapathi-S43/Face-test.git
+%cd Face-test
 !pip install torch torchvision onnxruntime-gpu insightface gradio gfpgan
 
 # Cell 2: Download models
@@ -116,4 +116,4 @@ Upload these to your GPU server:
 - `gpu_server.py` - Web server with Gradio UI
 - `runpod_setup.sh` - Automated setup script
 
-Both files are in: `~/face-swap/deploy/`
+Both files are in: `deploy/`
