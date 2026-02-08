@@ -25,9 +25,9 @@ from insightface.model_zoo import get_model
 try:
     from gfpgan import GFPGANer
     GFPGAN_AVAILABLE = True
-except ImportError:
+except Exception as _gfpgan_err:
     GFPGAN_AVAILABLE = False
-    print("⚠️ GFPGAN not available — HD enhancement disabled")
+    print(f"⚠️ GFPGAN not available — HD enhancement disabled ({_gfpgan_err})")
 
 
 # ═══════════════════════════════════════════════════════

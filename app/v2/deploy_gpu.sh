@@ -74,14 +74,20 @@ if [ ! -f "$BUFFALO_DIR/det_10g.onnx" ]; then
     if download_file \
         "https://huggingface.co/public-data/insightface/resolve/main/models/buffalo_l.zip" \
         "$BUFFALO_ZIP" "buffalo_l face analysis model (~150MB)"; then
-        mkdir -p "$BUFFALO_DIR"
-        unzip -o -q "$BUFFALO_ZIP" -d "$MODELS_DIR/models/"
-        # Handle case where zip extracts into buffalo_l/buffalo_l/
+        # Use Python to extract (unzip may not be installed in Docker)
+        python3 -c "
+import zipfile, os, sys
+zf = zipfile.ZipFile('$BUFFALO_ZIP')
+zf.extractall('$MODELS_DIR/models/')
+zf.close()
+print('  Extracted', len(zf.namelist()), 'files')
+"
+        rm -f "$BUFFALO_ZIP"
+        # Handle nested extraction (buffalo_l/buffalo_l/)
         if [ -d "$BUFFALO_DIR/buffalo_l" ]; then
             mv "$BUFFALO_DIR/buffalo_l/"* "$BUFFALO_DIR/" 2>/dev/null
             rmdir "$BUFFALO_DIR/buffalo_l" 2>/dev/null
         fi
-        rm -f "$BUFFALO_ZIP"
     fi
     # Verify extraction worked
     if [ -f "$BUFFALO_DIR/det_10g.onnx" ]; then
