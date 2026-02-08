@@ -124,12 +124,27 @@ def process_webcam_frame(frame):
     """
     Process a single webcam frame from browser.
     Uses the EXACT same swap_face_frame() that works locally.
-    Gradio sends RGB, swap_face_frame expects RGB, returns RGB.
+    Gradio sends RGB numpy array, swap_face_frame expects RGB, returns RGB.
     """
     global face_swap_engine, source_faces_loaded, _frame_count
 
+    # Debug: log every call so we know streaming is working
+    _frame_count += 1
+    if _frame_count <= 3 or _frame_count % 60 == 0:
+        print(f"[STREAM] process_webcam_frame called | frame_count={_frame_count} | "
+              f"frame_type={type(frame)} | "
+              f"frame_shape={frame.shape if isinstance(frame, np.ndarray) else 'N/A'} | "
+              f"faces_loaded={source_faces_loaded} | "
+              f"engine={'YES' if face_swap_engine else 'NO'}")
+
     if frame is None:
+        print("[STREAM] frame is None, returning None")
         return None
+
+    # Ensure frame is a numpy array (Gradio may send PIL Image in some versions)
+    if not isinstance(frame, np.ndarray):
+        print(f"[STREAM] Converting frame from {type(frame)} to numpy array")
+        frame = np.array(frame)
 
     if not source_faces_loaded or face_swap_engine is None:
         display = frame.copy()
@@ -144,10 +159,9 @@ def process_webcam_frame(frame):
         return display
 
     try:
-        _frame_count += 1
         start_time = time.time()
 
-        # Gradio sends RGB. swap_face_frame expects RGB. Direct pass - no conversion.
+        # Gradio sends RGB. swap_face_frame expects RGB. Direct pass.
         result = face_swap_engine.swap_face_frame(
             frame,
             enhance=current_settings["enhance"],
@@ -161,9 +175,10 @@ def process_webcam_frame(frame):
         elapsed_ms = (time.time() - start_time) * 1000
         swapped = result is not frame
 
-        if _frame_count % 30 == 1:
+        if _frame_count <= 5 or _frame_count % 30 == 1:
             status = "SWAPPED" if swapped else "NO_FACE"
-            print(f"Frame #{_frame_count}: {status} | {elapsed_ms:.0f}ms")
+            print(f"[SWAP] Frame #{_frame_count}: {status} | {elapsed_ms:.0f}ms | "
+                  f"result_shape={result.shape}")
 
         display = result.copy()
         color = (0, 255, 0) if swapped else (255, 165, 0)
@@ -174,10 +189,9 @@ def process_webcam_frame(frame):
         return display
 
     except Exception as e:
-        if _frame_count % 30 == 1:
-            print(f"Frame error: {e}")
-            import traceback
-            traceback.print_exc()
+        print(f"[ERROR] Frame #{_frame_count}: {e}")
+        import traceback
+        traceback.print_exc()
         return frame
 
 
@@ -305,13 +319,19 @@ def create_ui():
                 )
 
             with gr.Column(scale=2):
-                gr.Markdown("### Live Output")
+                gr.Markdown("### Live Preview")
                 webcam_input = gr.Image(
                     sources=["webcam"],
                     streaming=True,
-                    label="Your Camera (processed in real-time)",
-                    height=500,
+                    label="Camera Input",
                     mirror_webcam=True,
+                    type="numpy",
+                )
+                gr.Markdown("### Face Swap Output")
+                output_image = gr.Image(
+                    label="Processed Output",
+                    interactive=False,
+                    height=500,
                 )
                 gr.Markdown(
                     """
@@ -332,10 +352,13 @@ def create_ui():
             inputs=[mouth_mask, sharpness, enhance],
             outputs=[settings_status],
         )
+        # Stream: webcam frames -> process -> separate output display
         webcam_input.stream(
             fn=process_webcam_frame,
             inputs=[webcam_input],
-            outputs=[webcam_input],
+            outputs=[output_image],
+            stream_every=0.1,
+            time_limit=None,
         )
 
     return app
