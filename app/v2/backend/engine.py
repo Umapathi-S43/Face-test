@@ -629,30 +629,21 @@ class FaceSwapEngine:
             settings = self.settings
 
             for tf in targets:
-                # Compute face mask ONCE — reused for color transfer + mouth area
-                face_mask = create_face_mask(tf, original)
-
                 # Save original mouth BEFORE swap (for lip sync)
                 mouth_data = None
                 if settings["mouth_mask"]:
+                    face_mask = create_face_mask(tf, original)
                     mm, mc, mb, mp = create_lower_mouth_mask(tf, original)
                     if mc is not None and mb != (0, 0, 0, 0):
                         mouth_data = (mm, mc, mb, mp, face_mask)
 
+                # INSwapper: paste_back=True handles affine warp + blending internally
                 swapped = self.face_swapper.get(result, tf, src, paste_back=True)
                 if swapped is None or not isinstance(swapped, np.ndarray):
                     continue
                 if swapped.shape != result.shape:
                     swapped = cv2.resize(swapped, (result.shape[1], result.shape[0]))
                 swapped = np.clip(swapped, 0, 255).astype(np.uint8)
-
-                # Color transfer — match swapped skin tone to original
-                # Uses face_mask so LAB stats are computed from face pixels only
-                # Blend: color-matched face INSIDE mask, original frame OUTSIDE mask
-                if face_mask is not None and face_mask.max() > 0:
-                    fm3 = face_mask[:, :, np.newaxis].astype(np.float32) / 255.0
-                    color_matched = apply_color_transfer(swapped.copy(), original, mask=face_mask)
-                    swapped = (color_matched * fm3 + result * (1.0 - fm3)).astype(np.uint8)
 
                 # Restore original mouth for lip sync
                 if mouth_data:
@@ -717,16 +708,15 @@ class FaceSwapEngine:
 
             result = frame_bgr.copy()
             for tf in targets:
-                # Compute face mask ONCE — reused for color transfer + mouth area
-                face_mask = create_face_mask(tf, original)
-
-                # Save mouth before swap
+                # Save mouth BEFORE swap for lip sync preservation
                 mouth_data = None
                 if use_mouth_mask:
+                    face_mask = create_face_mask(tf, original)
                     mm, mc, mb, mp = create_lower_mouth_mask(tf, original)
                     if mc is not None and mb != (0, 0, 0, 0):
                         mouth_data = (mm, mc, mb, mp, face_mask)
 
+                # INSwapper: paste_back=True handles affine warp + blending internally
                 swapped = self.face_swapper.get(result, tf, src, paste_back=True)
                 if swapped is None or not isinstance(swapped, np.ndarray):
                     continue
@@ -734,14 +724,7 @@ class FaceSwapEngine:
                     swapped = cv2.resize(swapped, (result.shape[1], result.shape[0]))
                 swapped = np.clip(swapped, 0, 255).astype(np.uint8)
 
-                # Color transfer — match swapped skin tone to original
-                # Uses face_mask so LAB stats are from face pixels only
-                # Blend: color-matched face INSIDE mask, original frame OUTSIDE mask
-                if use_color_transfer and face_mask is not None and face_mask.max() > 0:
-                    fm3 = face_mask[:, :, np.newaxis].astype(np.float32) / 255.0
-                    color_matched = apply_color_transfer(swapped.copy(), original, mask=face_mask)
-                    swapped = (color_matched * fm3 + result * (1.0 - fm3)).astype(np.uint8)
-
+                # Restore original mouth area (lip sync) — color-correct mouth to match swapped face
                 if mouth_data:
                     mm, mc, mb, mp, fm = mouth_data
                     swapped = apply_mouth_area(swapped, mc, mb, fm, mp)
@@ -796,17 +779,15 @@ class FaceSwapEngine:
 
             result = frame_bgr
             for tf in targets:
-                # Compute face mask ONCE — reused for color transfer + mouth area
-                face_mask = create_face_mask(tf, original_bgr)
-
-                # Mouth mask before swap (in BGR)
+                # Save mouth BEFORE swap for lip sync preservation
                 mouth_data = None
                 if use_mouth_mask:
+                    face_mask = create_face_mask(tf, original_bgr)
                     mm, mc, mb, mp = create_lower_mouth_mask(tf, original_bgr)
                     if mc is not None and mb != (0, 0, 0, 0):
                         mouth_data = (mm, mc, mb, mp, face_mask)
 
-                # INSwapper expects BGR, returns BGR
+                # INSwapper: paste_back=True handles affine warp + blending internally
                 swapped = self.face_swapper.get(result, tf, src, paste_back=True)
                 if swapped is None or not isinstance(swapped, np.ndarray):
                     continue
@@ -814,14 +795,7 @@ class FaceSwapEngine:
                     swapped = cv2.resize(swapped, (result.shape[1], result.shape[0]))
                 swapped = np.clip(swapped, 0, 255).astype(np.uint8)
 
-                # Color transfer — match swapped face skin tone to original frame
-                # Uses face_mask so LAB stats are from face pixels only (not sky/clothes/bg)
-                # Blend: color-matched face INSIDE mask, original frame OUTSIDE mask
-                if face_mask is not None and face_mask.max() > 0:
-                    fm3 = face_mask[:, :, np.newaxis].astype(np.float32) / 255.0
-                    color_matched = apply_color_transfer(swapped.copy(), original_bgr, mask=face_mask)
-                    swapped = (color_matched * fm3 + result * (1.0 - fm3)).astype(np.uint8)
-
+                # Restore original mouth area (lip sync) — color-correct mouth to match swapped face
                 if mouth_data:
                     mm, mc, mb, mp, fm = mouth_data
                     swapped = apply_mouth_area(swapped, mc, mb, fm, mp)
