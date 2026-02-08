@@ -1,7 +1,7 @@
 #!/bin/bash
 # PlasticVision Pro v2 — GPU Server Deploy Script
 # Usage: bash deploy_gpu.sh
-set -e
+# NOTE: no 'set -e' — we handle errors explicitly so downloads don't kill the script
 
 echo "═══════════════════════════════════════════════"
 echo "🎭 PlasticVision Pro v2 — GPU Deployment"
@@ -46,6 +46,23 @@ pip install --upgrade pip -q
 pip install -r "$PROJECT_DIR/requirements.txt" -q
 echo "  ✅ Dependencies installed"
 
+# Helper: download with retries using curl (more reliable than wget for HuggingFace)
+download_file() {
+    local url="$1"
+    local dest="$2"
+    local name="$3"
+    echo "  ⬇️  Downloading $name..."
+    if curl -L --retry 3 --retry-delay 5 -# -o "$dest" "$url"; then
+        local size=$(du -sh "$dest" 2>/dev/null | cut -f1)
+        echo "  ✅ $name ready ($size)"
+        return 0
+    else
+        echo "  ❌ Failed to download $name from $url"
+        rm -f "$dest"
+        return 1
+    fi
+}
+
 # === Download models ===
 echo ""
 echo "📥 Downloading AI models (this takes a few minutes first time)..."
@@ -53,63 +70,70 @@ echo "📥 Downloading AI models (this takes a few minutes first time)..."
 # buffalo_l (InsightFace face analysis)
 BUFFALO_DIR="$MODELS_DIR/models/buffalo_l"
 if [ ! -d "$BUFFALO_DIR" ] || [ -z "$(ls -A $BUFFALO_DIR 2>/dev/null)" ]; then
-    echo "  ⬇️  Downloading buffalo_l face analysis model..."
     BUFFALO_ZIP="$MODELS_DIR/models/buffalo_l.zip"
-    wget -q --show-progress -O "$BUFFALO_ZIP" \
-        "https://huggingface.co/datasets/deepinsight/insightface/resolve/main/models/buffalo_l.zip"
-    mkdir -p "$BUFFALO_DIR"
-    unzip -o -q "$BUFFALO_ZIP" -d "$MODELS_DIR/models/"
-    rm -f "$BUFFALO_ZIP"
-    echo "  ✅ buffalo_l ready"
+    if download_file \
+        "https://huggingface.co/public-data/insightface/resolve/main/models/buffalo_l.zip" \
+        "$BUFFALO_ZIP" "buffalo_l face analysis model"; then
+        mkdir -p "$BUFFALO_DIR"
+        unzip -o -q "$BUFFALO_ZIP" -d "$MODELS_DIR/models/"
+        rm -f "$BUFFALO_ZIP"
+    else
+        echo "  ⚠️  Trying alternate URL..."
+        if download_file \
+            "https://github.com/deepinsight/insightface/releases/download/v0.7/buffalo_l.zip" \
+            "$BUFFALO_ZIP" "buffalo_l (alternate)"; then
+            mkdir -p "$BUFFALO_DIR"
+            unzip -o -q "$BUFFALO_ZIP" -d "$MODELS_DIR/models/"
+            rm -f "$BUFFALO_ZIP"
+        else
+            echo "  ❌ buffalo_l download failed. You can manually place it in $BUFFALO_DIR"
+            echo "     The engine will try to auto-download it on first run via insightface."
+        fi
+    fi
 else
     echo "  ✅ buffalo_l exists"
 fi
 
 # inswapper_128.onnx (face swap model - FP32, 529MB)
 if [ ! -f "$MODELS_DIR/inswapper_128.onnx" ]; then
-    echo "  ⬇️  Downloading inswapper_128.onnx (529MB)..."
-    wget -q --show-progress -O "$MODELS_DIR/inswapper_128.onnx" \
-        "https://huggingface.co/hacksider/deep-live-cam/resolve/main/inswapper_128.onnx"
-    echo "  ✅ inswapper_128.onnx ready"
+    download_file \
+        "https://huggingface.co/hacksider/deep-live-cam/resolve/main/inswapper_128.onnx" \
+        "$MODELS_DIR/inswapper_128.onnx" "inswapper_128.onnx (529MB)"
 else
     echo "  ✅ inswapper_128.onnx exists ($(du -sh $MODELS_DIR/inswapper_128.onnx | cut -f1))"
 fi
 
 # inswapper_128_fp16.onnx (face swap model - FP16, 264MB — 2x faster on GPU)
 if [ ! -f "$MODELS_DIR/inswapper_128_fp16.onnx" ]; then
-    echo "  ⬇️  Downloading inswapper_128_fp16.onnx (264MB)..."
-    wget -q --show-progress -O "$MODELS_DIR/inswapper_128_fp16.onnx" \
-        "https://huggingface.co/hacksider/deep-live-cam/resolve/main/inswapper_128_fp16.onnx"
-    echo "  ✅ inswapper_128_fp16.onnx ready"
+    download_file \
+        "https://huggingface.co/hacksider/deep-live-cam/resolve/main/inswapper_128_fp16.onnx" \
+        "$MODELS_DIR/inswapper_128_fp16.onnx" "inswapper_128_fp16.onnx (264MB)"
 else
     echo "  ✅ inswapper_128_fp16.onnx exists ($(du -sh $MODELS_DIR/inswapper_128_fp16.onnx | cut -f1))"
 fi
 
 # GFPGANv1.4.pth (face enhancement, 332MB)
 if [ ! -f "$MODELS_DIR/GFPGANv1.4.pth" ]; then
-    echo "  ⬇️  Downloading GFPGANv1.4.pth (332MB)..."
-    wget -q --show-progress -O "$MODELS_DIR/GFPGANv1.4.pth" \
-        "https://github.com/TencentARC/GFPGAN/releases/download/v1.3.4/GFPGANv1.4.pth"
-    echo "  ✅ GFPGANv1.4.pth ready"
+    download_file \
+        "https://github.com/TencentARC/GFPGAN/releases/download/v1.3.4/GFPGANv1.4.pth" \
+        "$MODELS_DIR/GFPGANv1.4.pth" "GFPGANv1.4.pth (332MB)"
 else
     echo "  ✅ GFPGANv1.4.pth exists ($(du -sh $MODELS_DIR/GFPGANv1.4.pth | cut -f1))"
 fi
 
 # GFPGAN auxiliary weights (detection + parsing)
 if [ ! -f "$BACKEND_DIR/gfpgan/weights/detection_Resnet50_Final.pth" ]; then
-    echo "  ⬇️  Downloading GFPGAN detection weights..."
-    wget -q --show-progress -O "$BACKEND_DIR/gfpgan/weights/detection_Resnet50_Final.pth" \
-        "https://github.com/xinntao/facexlib/releases/download/v0.1.0/detection_Resnet50_Final.pth"
-    echo "  ✅ detection_Resnet50_Final.pth ready"
+    download_file \
+        "https://github.com/xinntao/facexlib/releases/download/v0.1.0/detection_Resnet50_Final.pth" \
+        "$BACKEND_DIR/gfpgan/weights/detection_Resnet50_Final.pth" "GFPGAN detection weights"
 else
     echo "  ✅ GFPGAN detection weights exist"
 fi
 
 if [ ! -f "$BACKEND_DIR/gfpgan/weights/parsing_parsenet.pth" ]; then
-    echo "  ⬇️  Downloading GFPGAN parsing weights..."
-    wget -q --show-progress -O "$BACKEND_DIR/gfpgan/weights/parsing_parsenet.pth" \
-        "https://github.com/xinntao/facexlib/releases/download/v0.2.2/parsing_parsenet.pth"
-    echo "  ✅ parsing_parsenet.pth ready"
+    download_file \
+        "https://github.com/xinntao/facexlib/releases/download/v0.2.2/parsing_parsenet.pth" \
+        "$BACKEND_DIR/gfpgan/weights/parsing_parsenet.pth" "GFPGAN parsing weights"
 else
     echo "  ✅ GFPGAN parsing weights exist"
 fi
