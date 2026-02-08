@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PlasticVision Pro v2 — Face Swap</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <h1>🎭 PlasticVision Pro <span class="version">v2</span></h1>
+        <div id="connection-status" class="status disconnected">⚫ Disconnected</div>
+    </header>
+
+    <!-- Tab Navigation -->
+    <nav class="tabs">
+        <button class="tab active" data-tab="setup">⚙️ Setup</button>
+        <button class="tab" data-tab="live">🎭 Live Preview</button>
+        <button class="tab" data-tab="image">🖼️ Image Swap</button>
+        <button class="tab" data-tab="video">🎬 Video Swap</button>
+        <button class="tab" data-tab="detect">🔍 Face Detection</button>
+    </nav>
+
+    <!-- Server Connection Bar -->
+    <div class="server-bar">
+        <label>Server URL:</label>
+        <input type="text" id="server-url" value="http://localhost:8000" placeholder="http://gpu-server:8000">
+        <button id="connect-btn" onclick="connectToServer()">Connect</button>
+        <span id="gpu-info" class="gpu-info"></span>
+    </div>
+
+    <!-- ═══════════════════════════════════════════ -->
+    <!-- TAB 1: SETUP -->
+    <!-- ═══════════════════════════════════════════ -->
+    <div id="tab-setup" class="tab-content active">
+        <div class="panel">
+            <h2>📸 Upload Source Faces</h2>
+            <p>Upload 1-10 clear face photos. Supports: JPEG, PNG, WebP, BMP, TIFF.</p>
+
+            <div class="upload-area" id="source-upload-area">
+                <input type="file" id="source-files" multiple accept="image/*" onchange="previewSourceFiles()">
+                <div class="upload-placeholder">
+                    <span class="icon">📷</span>
+                    <span>Click or drag face photos here</span>
+                </div>
+            </div>
+
+            <div id="source-preview" class="image-preview-grid"></div>
+
+            <button id="load-faces-btn" class="btn primary" onclick="uploadSourceFaces()" disabled>
+                🔥 Load Faces into GPU
+            </button>
+            <div id="load-status" class="status-box">⏳ Upload face photos and click Load Faces</div>
+        </div>
+
+        <div class="panel">
+            <h2>⚙️ Quality Settings</h2>
+            <div class="settings-grid">
+                <label>
+                    <input type="checkbox" id="set-mouth-mask" checked onchange="updateSettings()">
+                    Natural Lip Movement
+                    <small>Preserves original lip motion for realism</small>
+                </label>
+                <label>
+                    Sharpness: <span id="sharp-val">0.3</span>
+                    <input type="range" id="set-sharpness" min="0" max="1" step="0.1" value="0.3" oninput="document.getElementById('sharp-val').textContent=this.value; updateSettings()">
+                </label>
+                <label>
+                    <input type="checkbox" id="set-enhance" onchange="updateSettings()">
+                    HD Enhancement (GFPGAN)
+                    <small>Higher quality but slower — disable for live preview</small>
+                </label>
+                <label>
+                    Opacity: <span id="opacity-val">1.0</span>
+                    <input type="range" id="set-opacity" min="0" max="1" step="0.1" value="1.0" oninput="document.getElementById('opacity-val').textContent=this.value; updateSettings()">
+                </label>
+                <label>
+                    <input type="checkbox" id="set-swap-all" onchange="updateSettings()">
+                    Swap All Faces
+                    <small>Swap every face found (default: largest only)</small>
+                </label>
+            </div>
+            <div id="settings-status" class="status-box">Default settings</div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════ -->
+    <!-- TAB 2: LIVE PREVIEW -->
+    <!-- ═══════════════════════════════════════════ -->
+    <div id="tab-live" class="tab-content">
+        <div class="live-container">
+            <div class="video-panel">
+                <h3>📹 Webcam Input</h3>
+                <video id="webcam-video" autoplay muted playsinline></video>
+                <canvas id="capture-canvas" style="display:none;"></canvas>
+            </div>
+            <div class="video-panel">
+                <h3>✨ Face Swap Output</h3>
+                <canvas id="output-canvas"></canvas>
+            </div>
+        </div>
+
+        <div class="live-controls">
+            <button id="start-stream-btn" class="btn primary" onclick="startStream()">▶️ Start Live Stream</button>
+            <button id="stop-stream-btn" class="btn danger" onclick="stopStream()" disabled>⏹️ Stop</button>
+            <select id="camera-select" onchange="switchCamera()"></select>
+            <div class="stats">
+                <span id="live-fps">FPS: —</span>
+                <span id="live-latency">Latency: —</span>
+                <span id="live-size">Frame: —</span>
+            </div>
+        </div>
+        <div id="live-status" class="status-box">Set up source faces in Setup tab, then start streaming</div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════ -->
+    <!-- TAB 3: IMAGE SWAP -->
+    <!-- ═══════════════════════════════════════════ -->
+    <div id="tab-image" class="tab-content">
+        <div class="swap-grid">
+            <div class="panel">
+                <h3>📸 Source Faces</h3>
+                <input type="file" id="img-source-files" multiple accept="image/*">
+            </div>
+            <div class="panel">
+                <h3>🎯 Target Image</h3>
+                <input type="file" id="img-target-file" accept="image/*">
+                <img id="img-target-preview" class="preview-img" style="display:none">
+            </div>
+        </div>
+        <div class="controls-row">
+            <label><input type="checkbox" id="img-enhance" checked> HD Enhancement</label>
+            <label><input type="checkbox" id="img-swap-all"> Swap All Faces</label>
+            <button class="btn primary" onclick="swapImage()">🔄 Swap Face</button>
+        </div>
+        <div class="result-panel">
+            <h3>✨ Result</h3>
+            <img id="img-result" class="result-img" style="display:none">
+            <a id="img-download" class="btn" style="display:none" download="result.png">💾 Download</a>
+        </div>
+        <div id="img-status" class="status-box">Upload source faces and a target image</div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════ -->
+    <!-- TAB 4: VIDEO SWAP -->
+    <!-- ═══════════════════════════════════════════ -->
+    <div id="tab-video" class="tab-content">
+        <div class="swap-grid">
+            <div class="panel">
+                <h3>📸 Source Faces</h3>
+                <input type="file" id="vid-source-files" multiple accept="image/*">
+            </div>
+            <div class="panel">
+                <h3>🎯 Target Video</h3>
+                <input type="file" id="vid-target-file" accept="video/*">
+                <video id="vid-target-preview" class="preview-img" controls style="display:none"></video>
+            </div>
+        </div>
+        <div class="controls-row">
+            <label><input type="checkbox" id="vid-enhance"> HD Enhancement</label>
+            <label><input type="checkbox" id="vid-mouth" checked> Lip Sync</label>
+            <label><input type="checkbox" id="vid-swap-all"> Swap All</label>
+            <label>Sharpness: <input type="range" id="vid-sharp" min="0" max="1" step="0.1" value="0.3"></label>
+            <button class="btn primary" onclick="swapVideo()">🔄 Process Video</button>
+        </div>
+        <div class="result-panel">
+            <h3>✨ Result</h3>
+            <video id="vid-result" class="result-img" controls style="display:none"></video>
+            <a id="vid-download" class="btn" style="display:none" download="result.mp4">💾 Download</a>
+        </div>
+        <div id="vid-progress" class="progress-bar" style="display:none"><div class="progress-fill"></div></div>
+        <div id="vid-status" class="status-box">Upload source faces and a target video</div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════ -->
+    <!-- TAB 5: FACE DETECTION -->
+    <!-- ═══════════════════════════════════════════ -->
+    <div id="tab-detect" class="tab-content">
+        <div class="panel">
+            <h3>🔍 Face Detection</h3>
+            <p>Upload an image to detect and visualize all faces found.</p>
+            <input type="file" id="detect-file" accept="image/*">
+            <button class="btn primary" onclick="detectFaces()">🔍 Detect Faces</button>
+        </div>
+        <div class="result-panel">
+            <img id="detect-result" class="result-img" style="display:none">
+        </div>
+        <div id="detect-status" class="status-box">Upload an image</div>
+    </div>
+
+    <!-- Preview target images -->
+    <script>
+        document.getElementById('img-target-file').addEventListener('change', function() {
+            const file = this.files[0];
+            if (file) {
+                const img = document.getElementById('img-target-preview');
+                if (img.src.startsWith('blob:')) URL.revokeObjectURL(img.src);
+                img.src = URL.createObjectURL(file);
+                img.style.display = 'block';
+            }
+        });
+        document.getElementById('vid-target-file').addEventListener('change', function() {
+            const file = this.files[0];
+            if (file) {
+                const vid = document.getElementById('vid-target-preview');
+                if (vid.src && vid.src.startsWith('blob:')) URL.revokeObjectURL(vid.src);
+                vid.src = URL.createObjectURL(file);
+                vid.style.display = 'block';
+            }
+        });
+    </script>
+
+    <script src="app.js"></script>
+</body>
+</html>

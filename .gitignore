@@ -78,3 +78,10 @@ htmlcov/
 app/models/
 Deep-Live-Cam/models/
 
+# v2 uploads/outputs (runtime data)
+app/v2/backend/_uploads/
+app/v2/backend/_outputs/
+
+# v2 models (downloaded separately on GPU server)
+app/v2/models/
+
