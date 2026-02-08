@@ -164,6 +164,9 @@ async function updateSettings() {
         enhance: document.getElementById('set-enhance').checked,
         opacity: parseFloat(document.getElementById('set-opacity').value),
         swap_all: document.getElementById('set-swap-all').checked,
+        poisson_blend: document.getElementById('set-poisson').checked,
+        interpolation: document.getElementById('set-interpolation').checked,
+        interpolation_weight: parseFloat(document.getElementById('set-interp-weight').value),
     };
 
     try {
@@ -176,7 +179,7 @@ async function updateSettings() {
         if (data.success) {
             const s = data.settings;
             setStatus('settings-status',
-                `✅ Lip Sync=${s.mouth_mask}, Sharp=${s.sharpness}, HD=${s.enhance}, Opacity=${s.opacity}`);
+                `✅ Lip=${s.mouth_mask}, Sharp=${s.sharpness}, Poisson=${s.poisson_blend}, Smooth=${s.interpolation}`);
         }
     } catch (e) {
         setStatus('settings-status', `⚠️ Server not connected — settings saved locally`);

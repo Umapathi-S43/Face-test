@@ -250,6 +250,64 @@ def apply_sharpening(frame: np.ndarray, amount: float = 0.5) -> np.ndarray:
         return frame
 
 
+def apply_face_sharpening(frame: np.ndarray, face_bboxes: list, amount: float = 0.5) -> np.ndarray:
+    """
+    Apply sharpening ONLY to face regions (not the whole frame).
+    This matches Deep-Live-Cam's approach — avoids sharpening background noise.
+    """
+    if frame is None or amount <= 0 or not face_bboxes:
+        return frame
+    try:
+        h, w = frame.shape[:2]
+        for bbox in face_bboxes:
+            x1, y1, x2, y2 = int(bbox[0]), int(bbox[1]), int(bbox[2]), int(bbox[3])
+            x1, y1 = max(0, x1), max(0, y1)
+            x2, y2 = min(w, x2), min(h, y2)
+            if x2 <= x1 or y2 <= y1:
+                continue
+            face_region = frame[y1:y2, x1:x2]
+            if face_region.size == 0:
+                continue
+            blurred = cv2.GaussianBlur(face_region, (0, 0), 3)
+            sharpened = cv2.addWeighted(face_region, 1.0 + amount, blurred, -amount, 0)
+            frame[y1:y2, x1:x2] = np.clip(sharpened, 0, 255).astype(np.uint8)
+    except Exception:
+        pass
+    return frame
+
+
+def apply_poisson_blend(swapped: np.ndarray, original: np.ndarray, face, frame_for_mask: np.ndarray) -> np.ndarray:
+    """
+    Apply Poisson blending (cv2.seamlessClone) for smooth edge transitions.
+    This eliminates visible seam lines between the swapped face and original background.
+    Matches Deep-Live-Cam's poisson_blend feature.
+    """
+    if swapped is None or original is None or face is None:
+        return swapped
+    try:
+        face_mask = create_face_mask(face, frame_for_mask)
+        if face_mask is None:
+            return swapped
+        y_indices, x_indices = np.where(face_mask > 0)
+        if len(x_indices) == 0 or len(y_indices) == 0:
+            return swapped
+        x_min, x_max = int(np.min(x_indices)), int(np.max(x_indices))
+        y_min, y_max = int(np.min(y_indices)), int(np.max(y_indices))
+        # Center point for seamlessClone
+        center = (int((x_min + x_max) / 2), int((y_min + y_max) / 2))
+        # Crop source and mask
+        src_crop = swapped[y_min:y_max + 1, x_min:x_max + 1]
+        mask_crop = face_mask[y_min:y_max + 1, x_min:x_max + 1]
+        if src_crop.size == 0 or mask_crop.size == 0:
+            return swapped
+        # seamlessClone blends src_crop into original using mask_crop at center
+        result = cv2.seamlessClone(src_crop, original, mask_crop, center, cv2.NORMAL_CLONE)
+        return result
+    except Exception as e:
+        # Poisson blending can fail on edge cases — fall back silently
+        return swapped
+
+
 # ═══════════════════════════════════════════════════════
 # FACE SWAP ENGINE
 # ═══════════════════════════════════════════════════════
@@ -284,6 +342,9 @@ class FaceSwapEngine:
         self._live_lock = threading.Lock()  # Separate lock for live detector (no contention with quality path)
         self._initialized = False
 
+        # Temporal interpolation state (per-session for live mode)
+        self._prev_frames: dict = {}  # {session_id: prev_frame_bgr}
+
         # Settings
         self.settings = {
             "mouth_mask": True,
@@ -291,6 +352,9 @@ class FaceSwapEngine:
             "enhance": False,
             "opacity": 1.0,
             "swap_all": False,
+            "poisson_blend": True,
+            "interpolation": True,
+            "interpolation_weight": 0.8,
         }
 
     # ───────────────────────────────────────
@@ -627,6 +691,7 @@ class FaceSwapEngine:
             original = img.copy()
             result = img.copy()
             settings = self.settings
+            face_bboxes = []
 
             for tf in targets:
                 # Save original mouth BEFORE swap (for lip sync)
@@ -650,11 +715,16 @@ class FaceSwapEngine:
                     mm, mc, mb, mp, fm = mouth_data
                     swapped = apply_mouth_area(swapped, mc, mb, fm, mp)
 
-                result = swapped
+                # Poisson blending for smooth edges
+                if settings.get("poisson_blend", True):
+                    swapped = apply_poisson_blend(swapped, original, tf, original)
 
-            # Sharpening
-            if settings["sharpness"] > 0:
-                result = apply_sharpening(result, settings["sharpness"])
+                result = swapped
+                face_bboxes.append(tf.bbox.astype(int))
+
+            # Per-face sharpening
+            if settings["sharpness"] > 0 and face_bboxes:
+                result = apply_face_sharpening(result, face_bboxes, settings["sharpness"])
 
             # Opacity blending
             if 0 < settings["opacity"] < 1:
@@ -707,6 +777,7 @@ class FaceSwapEngine:
             targets = faces if swap_all else [max(faces, key=lambda f: (f.bbox[2]-f.bbox[0])*(f.bbox[3]-f.bbox[1]))]
 
             result = frame_bgr.copy()
+            face_bboxes = []
             for tf in targets:
                 # Save mouth BEFORE swap for lip sync preservation
                 mouth_data = None
@@ -729,10 +800,16 @@ class FaceSwapEngine:
                     mm, mc, mb, mp, fm = mouth_data
                     swapped = apply_mouth_area(swapped, mc, mb, fm, mp)
 
-                result = swapped
+                # Poisson blending: smooth edge transition (Deep-Live-Cam style)
+                if use_color_transfer:  # reuse flag for poisson blend in quality path
+                    swapped = apply_poisson_blend(swapped, original, tf, original)
 
-            if sharpness > 0:
-                result = apply_sharpening(result, sharpness)
+                result = swapped
+                face_bboxes.append(tf.bbox.astype(int))
+
+            # Per-face sharpening (only face regions)
+            if sharpness > 0 and face_bboxes:
+                result = apply_face_sharpening(result, face_bboxes, sharpness)
 
             if 0 < opacity < 1:
                 result = cv2.addWeighted(
@@ -778,6 +855,7 @@ class FaceSwapEngine:
             targets = faces if swap_all else [max(faces, key=lambda f: (f.bbox[2]-f.bbox[0])*(f.bbox[3]-f.bbox[1]))]
 
             result = frame_bgr
+            face_bboxes = []
             for tf in targets:
                 # Save mouth BEFORE swap for lip sync preservation
                 mouth_data = None
@@ -799,18 +877,39 @@ class FaceSwapEngine:
                 if mouth_data:
                     mm, mc, mb, mp, fm = mouth_data
                     swapped = apply_mouth_area(swapped, mc, mb, fm, mp)
+
+                # Poisson blending: smooth edge transition (Deep-Live-Cam style)
+                if self.settings.get("poisson_blend", True):
+                    swapped = apply_poisson_blend(swapped, original_bgr, tf, original_bgr)
+
                 result = swapped
+                face_bboxes.append(tf.bbox.astype(int))
 
-            if sharpness > 0:
-                result = apply_sharpening(result, sharpness)
+            # Per-face sharpening (only sharpen face regions, not background)
+            if sharpness > 0 and face_bboxes:
+                result = apply_face_sharpening(result, face_bboxes, sharpness)
 
+            # Opacity blending
             if 0 < opacity < 1 and original_bgr is not None:
                 result = cv2.addWeighted(
                     original_bgr.astype(np.uint8), 1 - opacity,
                     result.astype(np.uint8), opacity, 0,
                 )
 
-            return result.astype(np.uint8)
+            result = result.astype(np.uint8)
+
+            # Temporal interpolation: smooth frame-to-frame transitions (reduces flicker)
+            sid = session_id or "_global_"
+            if self.settings.get("interpolation", True) and face_bboxes:
+                w = self.settings.get("interpolation_weight", 0.8)
+                prev = self._prev_frames.get(sid)
+                if prev is not None and prev.shape == result.shape:
+                    result = cv2.addWeighted(prev, 1.0 - w, result, w, 0).astype(np.uint8)
+                self._prev_frames[sid] = result.copy()
+            else:
+                self._prev_frames[sid] = result.copy()
+
+            return result
         except Exception:
             return frame_bgr
 

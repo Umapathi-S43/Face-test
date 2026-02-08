@@ -100,6 +100,9 @@ class SettingsRequest(BaseModel):
     enhance: Optional[bool] = None
     opacity: Optional[float] = None
     swap_all: Optional[bool] = None
+    poisson_blend: Optional[bool] = None
+    interpolation: Optional[bool] = None
+    interpolation_weight: Optional[float] = None
 
 
 # ═══════════════════════════════════════════════════════
@@ -208,6 +211,12 @@ async def update_settings(req: SettingsRequest):
         engine.settings["opacity"] = max(0.0, min(1.0, req.opacity))
     if req.swap_all is not None:
         engine.settings["swap_all"] = req.swap_all
+    if req.poisson_blend is not None:
+        engine.settings["poisson_blend"] = req.poisson_blend
+    if req.interpolation is not None:
+        engine.settings["interpolation"] = req.interpolation
+    if req.interpolation_weight is not None:
+        engine.settings["interpolation_weight"] = max(0.0, min(1.0, req.interpolation_weight))
 
     return {"success": True, "settings": engine.settings}
 
