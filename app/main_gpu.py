@@ -818,11 +818,10 @@ if __name__ == "__main__":
     print("=" * 50)
     
     app = create_ui()
+    app.queue()  # Enable queue for handling multiple users
     app.launch(
         server_name="0.0.0.0",
         server_port=7860,
         share=True,  # Enable public URL
-        show_error=True,
-        max_threads=40,  # More threads for GPU
-        enable_queue=True  # Queue for handling multiple users
+        show_error=True
     )
