@@ -197,14 +197,22 @@ def process_webcam_frame(frame):
                    cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 0, 0), 2)
         return display
     
+    # Check if source face is actually loaded in engine
+    if face_swap_engine.source_face is None:
+        display = frame.copy()
+        cv2.putText(display, "Source face not loaded in engine!", (50, 50),
+                   cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 0, 0), 2)
+        return display
+    
     start_time = time.time()
     
     try:
-        # Convert to RGB if needed (Gradio sends RGB)
-        if len(frame.shape) == 3 and frame.shape[2] == 3:
-            frame_rgb = frame
-        else:
-            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        # Gradio Image component sends RGB format
+        frame_rgb = frame.copy()
+        
+        # Detect faces first to check
+        faces = face_swap_engine.detect_faces(frame_rgb)
+        face_count = len(faces) if faces else 0
         
         # GPU-accelerated face swap
         result = face_swap_engine.swap_face_frame(
@@ -231,7 +239,7 @@ def process_webcam_frame(frame):
         latency_ms = process_time * 1000
         
         # Status bar background
-        cv2.rectangle(display, (0, 0), (250, 70), (0, 0, 0), -1)
+        cv2.rectangle(display, (0, 0), (280, 90), (0, 0, 0), -1)
         
         # FPS and latency
         color = (0, 255, 0) if latency_ms < 100 else (0, 165, 255) if latency_ms < 200 else (0, 0, 255)
@@ -240,11 +248,15 @@ def process_webcam_frame(frame):
         cv2.putText(display, f"Latency: {latency_ms:.0f}ms", (10, 50),
                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
         
-        # Face swap status
-        face_detected = result is not frame_rgb
-        if face_detected:
-            cv2.putText(display, "LIVE", (180, 25),
+        # Face detection status
+        if face_count > 0:
+            cv2.putText(display, f"Faces: {face_count} | SWAPPING", (10, 75),
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
+            cv2.putText(display, "LIVE", (220, 25),
                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+        else:
+            cv2.putText(display, "No face detected", (10, 75),
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 165, 255), 1)
         
         return display
         
