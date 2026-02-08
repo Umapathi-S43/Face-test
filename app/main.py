@@ -430,8 +430,6 @@ def create_ui():
                     fn=process_webcam_frame,
                     inputs=[webcam_input],
                     outputs=[live_output],
-                    stream_every=0.1,
-                    time_limit=None,
                 )
 
             # ======== TAB 2: IMAGE SWAP ========
