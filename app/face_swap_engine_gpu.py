@@ -478,9 +478,9 @@ class FaceSwapEngineGPU:
                     scale = max_size / max(h, w)
                     img = cv2.resize(img, (int(w * scale), int(h * scale)), interpolation=cv2.INTER_AREA)
                 
-                img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-                
-                faces = self.face_app.get(img_rgb)
+                # InsightFace works with BGR format (OpenCV native)
+                # img is already in BGR from cv2.imread
+                faces = self.face_app.get(img)
                 
                 if faces:
                     face = max(faces, key=lambda f: (f.bbox[2] - f.bbox[0]) * (f.bbox[3] - f.bbox[1]))
@@ -530,15 +530,19 @@ class FaceSwapEngineGPU:
         
         try:
             if self.source_face is None:
+                print("⚠️ swap_face_frame: source_face is None")
                 return frame
             
             original_frame = frame.copy()
             
-            # Detect faces
+            # Detect faces in BGR format
             faces = self.detect_faces(frame)
             
             if not faces:
+                print("⚠️ swap_face_frame: No faces detected in frame")
                 return frame
+            
+            print(f"✅ swap_face_frame: Detected {len(faces)} face(s), swapping...")
             
             # Select faces to swap
             if swap_all:
@@ -560,10 +564,14 @@ class FaceSwapEngineGPU:
                         mouth_mask_data = (mouth_mask, mouth_cutout, mouth_box, mouth_polygon, face_mask)
                 
                 # Face swap (GPU-accelerated via ONNX)
+                print(f"🔄 Calling face_swapper.get() with target bbox: {target_face.bbox}")
                 swapped = self.face_swapper.get(result, target_face, self.source_face, paste_back=True)
                 
                 if swapped is None or not isinstance(swapped, np.ndarray):
+                    print(f"⚠️ face_swapper.get returned None or invalid: {type(swapped)}")
                     continue
+                
+                print(f"✅ Face swap successful, result shape: {swapped.shape}")
                 
                 if swapped.shape != result.shape:
                     swapped = cv2.resize(swapped, (result.shape[1], result.shape[0]))
