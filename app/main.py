@@ -409,27 +409,22 @@ def create_ui():
                 ### Real-Time Face Swap
                 1. Load source faces above
                 2. Allow camera access below
-                3. Face swap output appears on the right
+                3. Your face will be swapped in real-time!
                 """
                 )
-                with gr.Row():
-                    webcam_input = gr.Image(
-                        sources=["webcam"],
-                        streaming=True,
-                        label="Your Camera",
-                        mirror_webcam=True,
-                        type="numpy",
-                    )
-                    live_output = gr.Image(
-                        label="Face Swap Output",
-                        interactive=False,
-                        height=500,
-                    )
+                webcam_input = gr.Image(
+                    sources=["webcam"],
+                    streaming=True,
+                    label="Live Face Swap",
+                    mirror_webcam=True,
+                    type="numpy",
+                    height=550,
+                )
 
                 webcam_input.stream(
                     fn=process_webcam_frame,
                     inputs=[webcam_input],
-                    outputs=[live_output],
+                    outputs=[webcam_input],
                 )
 
             # ======== TAB 2: IMAGE SWAP ========
