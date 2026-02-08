@@ -419,9 +419,7 @@ def create_ui():
                 webcam_input.stream(
                     fn=process_webcam_frame,
                     inputs=[webcam_input],
-                    outputs=[webcam_input],
-                    time_limit=300,  # 5 minutes max
-                    stream_every=0.033  # ~30 FPS target
+                    outputs=[webcam_input]
                 )
             
             # ========== VIDEO PROCESSING TAB ==========
