@@ -69,26 +69,27 @@ echo "📥 Downloading AI models (this takes a few minutes first time)..."
 
 # buffalo_l (InsightFace face analysis)
 BUFFALO_DIR="$MODELS_DIR/models/buffalo_l"
-if [ ! -d "$BUFFALO_DIR" ] || [ -z "$(ls -A $BUFFALO_DIR 2>/dev/null)" ]; then
+if [ ! -f "$BUFFALO_DIR/det_10g.onnx" ]; then
     BUFFALO_ZIP="$MODELS_DIR/models/buffalo_l.zip"
     if download_file \
         "https://huggingface.co/public-data/insightface/resolve/main/models/buffalo_l.zip" \
-        "$BUFFALO_ZIP" "buffalo_l face analysis model"; then
+        "$BUFFALO_ZIP" "buffalo_l face analysis model (~150MB)"; then
         mkdir -p "$BUFFALO_DIR"
         unzip -o -q "$BUFFALO_ZIP" -d "$MODELS_DIR/models/"
-        rm -f "$BUFFALO_ZIP"
-    else
-        echo "  ⚠️  Trying alternate URL..."
-        if download_file \
-            "https://github.com/deepinsight/insightface/releases/download/v0.7/buffalo_l.zip" \
-            "$BUFFALO_ZIP" "buffalo_l (alternate)"; then
-            mkdir -p "$BUFFALO_DIR"
-            unzip -o -q "$BUFFALO_ZIP" -d "$MODELS_DIR/models/"
-            rm -f "$BUFFALO_ZIP"
-        else
-            echo "  ❌ buffalo_l download failed. You can manually place it in $BUFFALO_DIR"
-            echo "     The engine will try to auto-download it on first run via insightface."
+        # Handle case where zip extracts into buffalo_l/buffalo_l/
+        if [ -d "$BUFFALO_DIR/buffalo_l" ]; then
+            mv "$BUFFALO_DIR/buffalo_l/"* "$BUFFALO_DIR/" 2>/dev/null
+            rmdir "$BUFFALO_DIR/buffalo_l" 2>/dev/null
         fi
+        rm -f "$BUFFALO_ZIP"
+    fi
+    # Verify extraction worked
+    if [ -f "$BUFFALO_DIR/det_10g.onnx" ]; then
+        echo "  ✅ buffalo_l ready ($(ls $BUFFALO_DIR/*.onnx | wc -l | tr -d ' ') models)"
+    else
+        echo "  ⚠️  buffalo_l download/extract may have failed."
+        echo "     Falling back to insightface auto-download on first run..."
+        echo "     Files found: $(ls $BUFFALO_DIR/ 2>/dev/null || echo 'none')"
     fi
 else
     echo "  ✅ buffalo_l exists"
@@ -138,22 +139,18 @@ else
     echo "  ✅ GFPGAN parsing weights exist"
 fi
 
-# === Create symlinks ===
-echo ""
-echo "🔗 Creating model symlinks..."
-ln -sf "$MODELS_DIR/inswapper_128.onnx" "$BACKEND_DIR/inswapper_128.onnx"
-ln -sf "$MODELS_DIR/inswapper_128_fp16.onnx" "$BACKEND_DIR/inswapper_128_fp16.onnx"
-ln -sf "$MODELS_DIR/GFPGANv1.4.pth" "$BACKEND_DIR/GFPGANv1.4.pth"
-ln -sf "$MODELS_DIR/models/buffalo_l" "$BACKEND_DIR/models/models/buffalo_l"
-echo "  ✅ Symlinks created"
-
 # === Verify ===
 echo ""
 echo "✅ Verification:"
-echo "  Backend:   $(ls $BACKEND_DIR/*.py | wc -l | tr -d ' ') Python files"
+echo "  Backend:   $(ls $BACKEND_DIR/*.py 2>/dev/null | wc -l | tr -d ' ') Python files"
 echo "  Models:    $(ls $MODELS_DIR/*.onnx $MODELS_DIR/*.pth 2>/dev/null | wc -l | tr -d ' ') model files"
 echo "  Buffalo_l: $(ls $BUFFALO_DIR/*.onnx 2>/dev/null | wc -l | tr -d ' ') ONNX models"
 echo "  GFPGAN:    $(ls $BACKEND_DIR/gfpgan/weights/*.pth 2>/dev/null | wc -l | tr -d ' ') weight files"
+echo ""
+echo "  Model dir contents:"
+ls -lh "$MODELS_DIR/" 2>/dev/null
+echo "  Buffalo_l contents:"
+ls "$BUFFALO_DIR/" 2>/dev/null
 
 # === Start server ===
 echo ""
