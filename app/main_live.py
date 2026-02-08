@@ -63,23 +63,51 @@ MODELS_DIR.mkdir(exist_ok=True)
 def normalize_source_paths(source_images) -> List[str]:
     """Normalize source images input to list of file paths"""
     if source_images is None:
+        print("⚠️ source_images is None")
         return []
     
+    print(f"📂 Input type: {type(source_images)}, value: {source_images}")
+    
     source_paths = []
+    
+    # Handle single string path
     if isinstance(source_images, str):
         source_paths = [source_images]
+    # Handle list of items
     elif isinstance(source_images, list):
         for item in source_images:
+            print(f"  📄 Item type: {type(item)}, value: {item}")
             if isinstance(item, str):
                 source_paths.append(item)
             elif hasattr(item, 'name'):
+                # Gradio UploadFile object
                 source_paths.append(item.name)
-            elif isinstance(item, dict) and 'name' in item:
-                source_paths.append(item['name'])
+            elif isinstance(item, dict):
+                # Dict format from Gradio
+                if 'name' in item:
+                    source_paths.append(item['name'])
+                elif 'path' in item:
+                    source_paths.append(item['path'])
+            elif hasattr(item, 'path'):
+                source_paths.append(item.path)
+    # Handle single file object
     elif hasattr(source_images, 'name'):
         source_paths = [source_images.name]
+    elif hasattr(source_images, 'path'):
+        source_paths = [source_images.path]
     
-    return [p for p in source_paths if os.path.exists(p)]
+    print(f"📋 Extracted paths: {source_paths}")
+    
+    # Check which paths exist
+    valid_paths = []
+    for p in source_paths:
+        if p and os.path.exists(p):
+            valid_paths.append(p)
+            print(f"  ✅ Valid: {p}")
+        else:
+            print(f"  ❌ Not found: {p}")
+    
+    return valid_paths
 
 
 def initialize_engine():
@@ -112,22 +140,31 @@ def load_source_faces(source_images) -> str:
     """Load source faces for face swap"""
     global source_faces_loaded, face_swap_engine
     
+    print(f"🔄 load_source_faces called with: {source_images}")
+    
     source_paths = normalize_source_paths(source_images)
     
     if not source_paths:
         source_faces_loaded = False
-        return "❌ Please upload source face images"
+        return "❌ Please upload source face images (wait for upload to complete)"
     
     try:
+        print(f"🚀 Initializing engine...")
         engine = initialize_engine()
         
+        print(f"📷 Loading {len(source_paths)} face(s)...")
         if engine.load_source_faces(source_paths):
             source_faces_loaded = True
             return f"✅ Loaded {len(source_paths)} source face(s) - Ready for live preview!"
         else:
             source_faces_loaded = False
-            return "❌ Failed to detect faces in uploaded images"
+            return "❌ Failed to detect faces in uploaded images - ensure faces are visible"
     except Exception as e:
+        source_faces_loaded = False
+        print(f"❌ Error: {e}")
+        import traceback
+        traceback.print_exc()
+        return f"❌ Error: {str(e)}"
         source_faces_loaded = False
         return f"❌ Error: {str(e)}"
 
