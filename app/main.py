@@ -407,24 +407,19 @@ def create_ui():
                 gr.Markdown(
                     """
                 ### Real-Time Face Swap
-                1. Load source faces above
-                2. Allow camera access below
-                3. Your face will be swapped in real-time!
+                1. Load source faces above and click Load Faces
+                2. The webcam below will show your face-swapped live stream
                 """
                 )
-                webcam_input = gr.Image(
-                    sources=["webcam"],
-                    streaming=True,
-                    label="Live Face Swap",
-                    mirror_webcam=True,
-                    type="numpy",
-                    height=550,
-                )
-
-                webcam_input.stream(
+                # Use gr.Interface with live=True — works on ALL Gradio versions
+                # This is the ONLY reliable way for continuous webcam streaming in Gradio 4.x
+                live_interface = gr.Interface(
                     fn=process_webcam_frame,
-                    inputs=[webcam_input],
-                    outputs=[webcam_input],
+                    inputs=gr.Image(sources=["webcam"], streaming=True, type="numpy", label="Webcam"),
+                    outputs=gr.Image(label="Face Swap Output", type="numpy"),
+                    live=True,
+                    title=None,
+                    description=None,
                 )
 
             # ======== TAB 2: IMAGE SWAP ========
