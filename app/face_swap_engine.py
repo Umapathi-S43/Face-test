@@ -352,8 +352,31 @@ class FaceSwapEngine:
             
             # Initialize face analysis
             print("  📦 Loading face analysis model...")
-            # Force CPU provider only - CoreML has issues on macOS
-            providers = ['CPUExecutionProvider']
+            
+            # Auto-detect best execution provider
+            import onnxruntime as ort
+            available_providers = ort.get_available_providers()
+            print(f"  Available providers: {available_providers}")
+            
+            # Priority: CUDA > CoreML (Mac GPU) > CPU
+            if 'CUDAExecutionProvider' in available_providers:
+                providers = [
+                    ('CUDAExecutionProvider', {
+                        'device_id': 0,
+                        'arena_extend_strategy': 'kNextPowerOfTwo',
+                        'gpu_mem_limit': 8 * 1024 * 1024 * 1024,
+                        'cudnn_conv_algo_search': 'EXHAUSTIVE',
+                    }),
+                    'CPUExecutionProvider'
+                ]
+                print("  🚀 Using CUDA GPU acceleration")
+            elif 'CoreMLExecutionProvider' in available_providers:
+                # CoreML has issues, fallback to CPU on Mac
+                providers = ['CPUExecutionProvider']
+                print("  💻 Using CPU (CoreML disabled due to compatibility)")
+            else:
+                providers = ['CPUExecutionProvider']
+                print("  💻 Using CPU execution")
             
             self.face_app = FaceAnalysis(
                 name='buffalo_l',
@@ -375,7 +398,7 @@ class FaceSwapEngine:
             
             self.face_swapper = get_model(
                 str(swapper_path),
-                providers=['CPUExecutionProvider']
+                providers=providers
             )
             print("  ✅ Face swapper model loaded")
             
@@ -389,12 +412,22 @@ class FaceSwapEngine:
                     self._download_gfpgan_model(gfpgan_path)
                 
                 if gfpgan_path.exists():
+                    # Detect device for GFPGAN (PyTorch)
+                    import torch
+                    if torch.cuda.is_available():
+                        gfpgan_device = 'cuda'
+                        print("  🚀 GFPGAN using CUDA GPU")
+                    else:
+                        gfpgan_device = 'cpu'
+                        print("  💻 GFPGAN using CPU")
+                    
                     self.face_enhancer = GFPGANer(
                         model_path=str(gfpgan_path),
                         upscale=1,
                         arch='clean',
                         channel_multiplier=2,
-                        bg_upsampler=None
+                        bg_upsampler=None,
+                        device=gfpgan_device
                     )
             
             self._initialized = True

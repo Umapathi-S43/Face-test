@@ -70,3 +70,11 @@ build/
 # Coverage
 .coverage
 htmlcov/
+
+# Large model files
+*.onnx
+*.pth
+*.zip
+app/models/
+Deep-Live-Cam/models/
+
