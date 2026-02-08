@@ -123,19 +123,21 @@ def main():
         sys.exit(1)
     
     print("\n" + "=" * 60)
-    print("🚀 Starting SurgeryPreview Application...")
+    print("Starting PlasticVision Pro...")
     print("=" * 60)
-    print("\n📍 Open your browser at: http://localhost:7860")
+    print("\nOpen your browser at: http://localhost:7860")
     print("   Press Ctrl+C to stop\n")
     
-    # Import and run the main app
-    from main import create_ui
+    # Import and run the unified app
+    from main import create_ui, is_server
     
+    server_mode = is_server()
     app = create_ui()
+    app.queue(max_size=20)
     app.launch(
         server_name="0.0.0.0",
         server_port=7860,
-        share=False,
+        share=server_mode,
         show_error=True
     )
 
