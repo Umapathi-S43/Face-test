@@ -478,9 +478,9 @@ class FaceSwapEngineGPU:
                     scale = max_size / max(h, w)
                     img = cv2.resize(img, (int(w * scale), int(h * scale)), interpolation=cv2.INTER_AREA)
                 
-                # InsightFace works with BGR format (OpenCV native)
-                # img is already in BGR from cv2.imread
-                faces = self.face_app.get(img)
+                # Convert BGR to RGB for InsightFace (consistent with detect_faces)
+                img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+                faces = self.face_app.get(img_rgb)
                 
                 if faces:
                     face = max(faces, key=lambda f: (f.bbox[2] - f.bbox[0]) * (f.bbox[3] - f.bbox[1]))

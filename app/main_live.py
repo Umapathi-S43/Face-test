@@ -207,17 +207,17 @@ def process_webcam_frame(frame):
     start_time = time.time()
     
     try:
-        # CRITICAL: Gradio Image component sends RGB format
-        # InsightFace expects BGR format, so we must convert!
-        frame_bgr = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+        # Gradio Image component sends RGB format
+        # Our engine expects RGB format (consistent with face_swap_engine.py)
+        frame_rgb = frame  # Already RGB from Gradio
         
-        # Detect faces first to check (using BGR)
-        faces = face_swap_engine.detect_faces(frame_bgr)
+        # Detect faces (using RGB)
+        faces = face_swap_engine.detect_faces(frame_rgb)
         face_count = len(faces) if faces else 0
         
-        # GPU-accelerated face swap (using BGR)
-        result_bgr = face_swap_engine.swap_face_frame(
-            frame_bgr,
+        # GPU-accelerated face swap (using RGB)
+        result = face_swap_engine.swap_face_frame(
+            frame_rgb,
             enhance=current_settings['enhance'],
             swap_all=False,
             use_mouth_mask=current_settings['use_mouth_mask'],
@@ -226,8 +226,7 @@ def process_webcam_frame(frame):
             opacity=1.0
         )
         
-        # Convert back to RGB for Gradio display
-        result = cv2.cvtColor(result_bgr, cv2.COLOR_BGR2RGB)
+        # Result is already RGB for Gradio display
         
         # Calculate processing time
         process_time = time.time() - start_time
